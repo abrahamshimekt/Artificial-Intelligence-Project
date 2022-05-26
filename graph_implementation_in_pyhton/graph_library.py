@@ -1,6 +1,8 @@
+import heapq
 import re
-from queue import Queue
-from heapq import heapify, heappush, heappop
+import matplotlib.pyplot as plt
+import timeit
+from collections import deque, defaultdict
 import sys
 
 
@@ -51,74 +53,79 @@ class Graph:
         right.connect(left)
 
     def breadth_first_search(self, graph, source, destination):
-        visited = set()
-        queue_of_nodes = Queue()
-        path = []
-        path_found = False
-        visited.add(source)
-        queue_of_nodes.put(source)
-        while queue_of_nodes:
-            node = queue_of_nodes.get()
-            path.append(node)
-            if node == destination:
-                path_found = True
-                break
-            else:
-                for neighbor in graph[node]:
-                    if neighbor[0] not in visited:
-                        visited.add(neighbor[0])
-                        queue_of_nodes.put(neighbor[0])
-
-        return path if path_found else "not found"
+        queue = deque()
+        visited = {source: 1}
+        parent = {}
+        queue.append(source)
+        while queue:
+            last = queue.popleft()
+            if last == destination:
+                node = last
+                path = []
+                while node:
+                    path.append(node)
+                    node = parent.get(node, None)
+                return path[::-1]
+            for neighbors in graph[last]:
+                if neighbors[0] not in visited:
+                    visited[neighbors[0]] = 1
+                    parent[neighbors[0]] = last
+                    queue.append(neighbors[0])
+        return "path not found"
 
     def deepth_first_search(self, graph, source, destination):
-        visited = set()
         stack = []
+        visited = {source: 1}
         path = []
-        path_found = False
-        visited.add(source)
         stack.append(source)
         while stack:
-            node = stack.pop()
-            path.append(node)
-            if node == destination:
-                path_found = True
-                break
+            last = stack.pop()
+            path.append(last)
+            if last == destination:
+                return path
             else:
-                for neighbor in graph[node]:
+                for neighbor in graph[last]:
                     if neighbor[0] not in visited:
-                        visited.add(neighbor[0])
+                        visited[neighbor[0]] = 1
                         stack.append(neighbor[0])
-        return path if path_found else "not found"
+        return "not found"
 
-    def dijkstras(self, nodes, graph, source, destination):
-        nodes[source]["distance"] = 0
-        visited = []
-        temp = source
-        for i in range(len(graph)):
-            if temp not in visited:
-                visited.append(source)
-                queue_of_nodes = []
-                for neighbor in graph[temp]:
-                    if neighbor not in visited:
-                        distance = nodes[source]["distance"] + neighbor[1]
-                        if distance < nodes[neighbor[0]]["distance"]:
-                            nodes[neighbor[0]]["distance"] = distance
-                            nodes[neighbor[0]]["path"] = nodes[temp]["path"] + list(temp)
-                        heappush(queue_of_nodes,(nodes[neighbor[0]]["distance"],neighbor[0]))
-                heapify(queue_of_nodes)
-                temp =queue_of_nodes[0][1]
-        return nodes[destination]["path"] + [destination]
+    def dijkstras(self, graph, source, destination):
+        nodes_distance = defaultdict(lambda: float('inf'))
+        visited = set()
+        nodes_distance[source] = 0
+        heap = []
+        heapq.heappush(heap, (0, source))
+        parent = {}
+        path = [source]
+        parent[source] = None
+        while len(heap) != 0:
+            (shortest_distance, current_node) = heapq.heappop(heap)
+            if current_node == destination:
+                node = current_node
+                path = []
+                while node:
+                    path.append(node)
+                    node = parent.get(node, None)
+                return path[::-1]
+            for neighbor in graph[current_node]:
+                if neighbor[0] not in visited:
+                    prev_distance = nodes_distance[neighbor[0]]
+                    curr_distance = nodes_distance[current_node] + neighbor[1]
+                    if curr_distance < prev_distance:
+                        heapq.heappush(heap, (curr_distance, neighbor[0]))
+                        nodes_distance[neighbor[0]] = curr_distance
+                        parent[neighbor[0]] = current_node
+        return "not found"
 
-    def heuristic_fun(self,h_nodes,node):
+    def heuristic_fun(self, h_nodes, node):
         return h_nodes[node]
 
-
-    def astrix_search(self,graph,h_nodes,source,destination):
-        visited_uninspected= {source}
+    def astrix_search(self, graph, h_nodes, source, destination):
+        visited_uninspected = {source}
         visited_inspected = set([])
-        distance = {source:0}
-        parents = {source:source}
+        distance = {source: 0}
+        parents = {source: source}
         while len(visited_uninspected) > 0:
             node = None
             for node_visited in visited_uninspected:
@@ -127,15 +134,16 @@ class Graph:
             if node is None:
                 return 'Path does not exist!'
             if node == destination:
-                paths= []
+                paths = []
 
                 while parents[node] != node:
                     paths.append(node)
-                    node= parents[node]
+                    node = parents[node]
 
                 paths.append(source)
 
                 paths.reverse()
+
                 return paths
             for (node_connected, weight) in graph[node]:
                 if node_connected not in visited_uninspected and node_connected not in visited_inspected:
@@ -171,12 +179,55 @@ def create_graph(file):
         if k[0] not in adj_list:
             adj_list[k[0]] = [(k[1], int(edge.weight))]
         else:
-            adj_list[k[0]].append((k[1],int(edge.weight)))
+            adj_list[k[0]].append((k[1], int(edge.weight)))
     for key in graph.vertices.keys():
         h_nodes[key] = 1
         nodes[key] = {"distance": inf, "path": []}
-    print(graph.breadth_first_search(adj_list,"Mehadia","Rimniscu"))
-    print(graph.deepth_first_search(adj_list, "Mehadia", "Rimniscu"))
-    print(graph.dijkstras(nodes,adj_list,"Mehadia","Rimniscu"))
-    print(graph.astrix_search(adj_list,h_nodes,"Mehadia","Rimniscu"))
+
+    bfs = 0
+    time_taken = []
+    for key in graph.vertices.keys():
+        first_bfs = timeit.default_timer()
+        for k in graph.vertices.keys():
+            print(graph.breadth_first_search(adj_list, key, k))
+        second_bfs = timeit.default_timer()
+        bfs += (second_bfs - first_bfs)
+    time_taken.append(bfs / 400)
+
+    dfs = 0
+    for key in graph.vertices.keys():
+        first_dfs = timeit.default_timer()
+        for k in graph.vertices.keys():
+            print(graph.deepth_first_search(adj_list, key, k))
+        second_dfs = timeit.default_timer()
+        dfs += (second_dfs - first_dfs)
+    time_taken.append(dfs / 400)
+
+    djk = 0
+    for key in graph.vertices.keys():
+        first_dj = timeit.default_timer()
+        for k in graph.vertices.keys():
+            print(graph.dijkstras(adj_list, key, k))
+        second_dj = timeit.default_timer()
+        djk += (second_dj - first_dj)
+    time_taken.append(djk / 400)
+
+    astar = 0
+    for key in graph.vertices.keys():
+        first_as = timeit.default_timer()
+        for k in graph.vertices.keys():
+            print(graph.astrix_search(adj_list, h_nodes, key, k))
+        second_as = timeit.default_timer()
+        astar += (second_as - first_as)
+    time_taken.append(astar / 400)
+
+    search_algorithms = ["bfs", "dfs", "dijkstras", "astar"]
+    plt.figure(figsize=(9, 5))
+    plt.bar(search_algorithms, time_taken)
+    plt.suptitle('search algorithm Plotting')
+    plt.xlabel("search_algorithms")
+    plt.ylabel("Average time taken")
+    plt.show()
+
+
 create_graph("edges.text")
