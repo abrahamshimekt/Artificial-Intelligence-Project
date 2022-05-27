@@ -3,7 +3,7 @@ import re
 import matplotlib.pyplot as plt
 import timeit
 from collections import deque, defaultdict
-import sys
+from math import radians, cos, sin, asin, sqrt
 
 
 class Node:
@@ -96,9 +96,7 @@ class Graph:
         nodes_distance[source] = 0
         heap = []
         heapq.heappush(heap, (0, source))
-        parent = {}
-        path = [source]
-        parent[source] = None
+        parent = {source: None}
         while len(heap) != 0:
             (shortest_distance, current_node) = heapq.heappop(heap)
             if current_node == destination:
@@ -118,10 +116,22 @@ class Graph:
                         parent[neighbor[0]] = current_node
         return "not found"
 
-    def heuristic_fun(self, h_nodes, node):
-        return h_nodes[node]
+    def haversine(self, source_lat, source_lon, destination_lat, destination_lon):
+        source_lon, source_lat, destination_lon, destination_lat = map(radians,
+                                                                       [source_lon, source_lat, destination_lon,
+                                                                        destination_lat])
+        distance_lon = destination_lon - source_lon
+        distance_lat = destination_lat - source_lat
+        a = sin(distance_lat / 2) ** 2 + cos(source_lat) * cos(destination_lat) * sin(distance_lon / 2) ** 2
+        c = 2 * asin(sqrt(a))
+        km = 6371 * c
+        return km
 
-    def astrix_search(self, graph, h_nodes, source, destination):
+    def astar_search(self, graph, h_nodes, source, destination):
+        utilities = {}
+        for key in h_nodes:
+            utilities[key] = self.haversine(h_nodes[source][0], h_nodes[source][1], h_nodes[destination][0],
+                                            h_nodes[destination][1])
         visited_uninspected = {source}
         visited_inspected = set([])
         distance = {source: 0}
@@ -129,22 +139,17 @@ class Graph:
         while len(visited_uninspected) > 0:
             node = None
             for node_visited in visited_uninspected:
-                if node is None or distance[node_visited] + self.heuristic_fun(h_nodes, node_visited) < distance[node] + self.heuristic_fun(h_nodes, node):
+                if node is None or distance[node_visited] + utilities[node_visited] < distance[node] + utilities[node]:
                     node = node_visited
             if node is None:
                 return 'Path does not exist!'
             if node == destination:
                 paths = []
-
                 while parents[node] != node:
                     paths.append(node)
                     node = parents[node]
-
                 paths.append(source)
-
-                paths.reverse()
-
-                return paths
+                return paths[::-1]
             for (node_connected, weight) in graph[node]:
                 if node_connected not in visited_uninspected and node_connected not in visited_inspected:
                     visited_uninspected.add(node_connected)
@@ -163,33 +168,31 @@ class Graph:
         return 'Path does not exist!'
 
 
-def create_graph(file):
-    inf = sys.maxsize
+def create_graph(file, heuristic):
     graph = Graph()
     adj_list = {}
-    nodes = {}
     h_nodes = {}
 
     with open(file, "r") as ef:
         for edges in ef:
             edges_content = re.split('[:\n]', edges)
             graph.add_edge(Node(edges_content[0]), Node(edges_content[1]), edges_content[2])
-
+    with open(heuristic, "r") as hf:
+        for nodes in hf:
+            node_content = re.split('[:\n]', nodes)
+            h_nodes[Node(node_content[0]).name] = (float(node_content[1]), float(node_content[2]))
     for iv, (k, edge) in enumerate(graph.edges.items()):
         if k[0] not in adj_list:
             adj_list[k[0]] = [(k[1], int(edge.weight))]
         else:
             adj_list[k[0]].append((k[1], int(edge.weight)))
-    for key in graph.vertices.keys():
-        h_nodes[key] = 1
-        nodes[key] = {"distance": inf, "path": []}
 
     bfs = 0
     time_taken = []
     for key in graph.vertices.keys():
         first_bfs = timeit.default_timer()
         for k in graph.vertices.keys():
-            print(graph.breadth_first_search(adj_list, key, k))
+            graph.breadth_first_search(adj_list, key, k)
         second_bfs = timeit.default_timer()
         bfs += (second_bfs - first_bfs)
     time_taken.append(bfs / 400)
@@ -198,7 +201,7 @@ def create_graph(file):
     for key in graph.vertices.keys():
         first_dfs = timeit.default_timer()
         for k in graph.vertices.keys():
-            print(graph.deepth_first_search(adj_list, key, k))
+            graph.deepth_first_search(adj_list, key, k)
         second_dfs = timeit.default_timer()
         dfs += (second_dfs - first_dfs)
     time_taken.append(dfs / 400)
@@ -207,7 +210,7 @@ def create_graph(file):
     for key in graph.vertices.keys():
         first_dj = timeit.default_timer()
         for k in graph.vertices.keys():
-            print(graph.dijkstras(adj_list, key, k))
+            graph.dijkstras(adj_list, key, k)
         second_dj = timeit.default_timer()
         djk += (second_dj - first_dj)
     time_taken.append(djk / 400)
@@ -216,18 +219,18 @@ def create_graph(file):
     for key in graph.vertices.keys():
         first_as = timeit.default_timer()
         for k in graph.vertices.keys():
-            print(graph.astrix_search(adj_list, h_nodes, key, k))
+            graph.astar_search(adj_list, h_nodes, key, k)
         second_as = timeit.default_timer()
         astar += (second_as - first_as)
     time_taken.append(astar / 400)
 
     search_algorithms = ["bfs", "dfs", "dijkstras", "astar"]
-    plt.figure(figsize=(9, 5))
+    plt.figure(figsize=(9, 6))
     plt.bar(search_algorithms, time_taken)
-    plt.suptitle('search algorithm Plotting')
-    plt.xlabel("search_algorithms")
+    plt.suptitle('Graph search algorithms')
+    plt.xlabel("search algorithms")
     plt.ylabel("Average time taken")
     plt.show()
 
 
-create_graph("edges.text")
+create_graph("edges.text", "heuristic.text")
