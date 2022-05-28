@@ -1,7 +1,6 @@
 import heapq
 import re
 import matplotlib.pyplot as plt
-import timeit
 from collections import deque, defaultdict
 from math import radians, cos, sin, asin, sqrt
 
@@ -65,7 +64,7 @@ class Graph:
                 while node:
                     path.append(node)
                     node = parent.get(node, None)
-                return path[::-1]
+                return len(path)
             for neighbors in graph[last]:
                 if neighbors[0] not in visited:
                     visited[neighbors[0]] = 1
@@ -82,7 +81,7 @@ class Graph:
             last = stack.pop()
             path.append(last)
             if last == destination:
-                return path
+                return len(path)
             else:
                 for neighbor in graph[last]:
                     if neighbor[0] not in visited:
@@ -92,7 +91,7 @@ class Graph:
 
     def dijkstras(self, graph, source, destination):
         nodes_distance = defaultdict(lambda: float('inf'))
-        visited = set()
+        visited = {}
         nodes_distance[source] = 0
         heap = []
         heapq.heappush(heap, (0, source))
@@ -105,7 +104,7 @@ class Graph:
                 while node:
                     path.append(node)
                     node = parent.get(node, None)
-                return path[::-1]
+                return path
             for neighbor in graph[current_node]:
                 if neighbor[0] not in visited:
                     prev_distance = nodes_distance[neighbor[0]]
@@ -128,31 +127,34 @@ class Graph:
         return km
 
     def astar_search(self, graph, h_nodes, source, destination):
-        utilities = {}
+        h_fn = {}
         for key in h_nodes:
-            utilities[key] = self.haversine(h_nodes[source][0], h_nodes[source][1], h_nodes[destination][0],
-                                            h_nodes[destination][1])
-        visited_uninspected = {source}
-        visited_inspected = set([])
+            h_fn[key] = self.calculate_distance(h_nodes[key][0], h_nodes[key][1], h_nodes[destination][0],
+                                       h_nodes[destination][1])
+
+        visited_uninspected = {source: 1}
+        visited_inspected = {}
         distance = {source: 0}
         parents = {source: source}
         while len(visited_uninspected) > 0:
             node = None
             for node_visited in visited_uninspected:
-                if node is None or distance[node_visited] + utilities[node_visited] < distance[node] + utilities[node]:
+                if node is None or distance[node_visited] + h_fn[node_visited] < distance[node] + h_fn[node]:
                     node = node_visited
             if node is None:
                 return 'Path does not exist!'
             if node == destination:
+
                 paths = []
                 while parents[node] != node:
                     paths.append(node)
                     node = parents[node]
                 paths.append(source)
-                return paths[::-1]
+                return paths
+
             for (node_connected, weight) in graph[node]:
                 if node_connected not in visited_uninspected and node_connected not in visited_inspected:
-                    visited_uninspected.add(node_connected)
+                    visited_uninspected[node_connected] = 1
                     parents[node_connected] = node
                     distance[node_connected] = distance[node] + weight
                 else:
@@ -161,14 +163,15 @@ class Graph:
                         parents[node_connected] = node
 
                         if node_connected in visited_inspected:
-                            visited_inspected.remove(node_connected)
-                            visited_uninspected.add(node_connected)
-            visited_uninspected.remove(node)
-            visited_inspected.add(node)
+                            visited_inspected.pop(node_connected)
+                            visited_uninspected[node_connected] = 1
+            visited_uninspected.pop(node)
+            visited_inspected[node] = 1
         return 'Path does not exist!'
 
 
 def create_graph(file, heuristic):
+    global second_dj, first_dj, second_dfs, first_dfs, second_bfs, first_bfs, second_as, first_as
     graph = Graph()
     adj_list = {}
     h_nodes = {}
@@ -187,46 +190,36 @@ def create_graph(file, heuristic):
         else:
             adj_list[k[0]].append((k[1], int(edge.weight)))
 
+    dist_taken = []
     bfs = 0
-    time_taken = []
     for key in graph.vertices.keys():
-        first_bfs = timeit.default_timer()
         for k in graph.vertices.keys():
-            graph.breadth_first_search(adj_list, key, k)
-        second_bfs = timeit.default_timer()
-        bfs += (second_bfs - first_bfs)
-    time_taken.append(bfs / 400)
-
+            if k != key:
+                bfs += graph.breadth_first_search(adj_list, k, key)
+    dist_taken.append(bfs / 380)
     dfs = 0
     for key in graph.vertices.keys():
-        first_dfs = timeit.default_timer()
         for k in graph.vertices.keys():
-            graph.deepth_first_search(adj_list, key, k)
-        second_dfs = timeit.default_timer()
-        dfs += (second_dfs - first_dfs)
-    time_taken.append(dfs / 400)
+            if k != key:
+                dfs += graph.deepth_first_search(adj_list, k, key)
+    dist_taken.append(dfs / 380)
 
-    djk = 0
+    dj = 0
     for key in graph.vertices.keys():
-        first_dj = timeit.default_timer()
         for k in graph.vertices.keys():
-            graph.dijkstras(adj_list, key, k)
-        second_dj = timeit.default_timer()
-        djk += (second_dj - first_dj)
-    time_taken.append(djk / 400)
+            if k != key:
+                dj += graph.dijkstras(adj_list, k, key)
+
+    dist_taken.append(dj / 380)
 
     astar = 0
     for key in graph.vertices.keys():
-        first_as = timeit.default_timer()
         for k in graph.vertices.keys():
-            graph.astar_search(adj_list, h_nodes, key, k)
-        second_as = timeit.default_timer()
-        astar += (second_as - first_as)
-    time_taken.append(astar / 400)
-
+            if k != key:
+                astar += graph.astar_search(adj_list, h_nodes, k, key)
+    dist_taken.append(astar / 380)
     search_algorithms = ["bfs", "dfs", "dijkstras", "astar"]
-    plt.figure(figsize=(9, 6))
-    plt.bar(search_algorithms, time_taken)
+    plt.bar(search_algorithms, dist_taken)
     plt.suptitle('Graph search algorithms')
     plt.xlabel("search algorithms")
     plt.ylabel("Average time taken")
