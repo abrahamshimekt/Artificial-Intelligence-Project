@@ -1,5 +1,8 @@
 import heapq
 import re
+import timeit
+import random
+
 import matplotlib.pyplot as plt
 from collections import deque, defaultdict
 from math import radians, cos, sin, asin, sqrt
@@ -52,6 +55,7 @@ class Graph:
         right.connect(left)
 
     def breadth_first_search(self, graph, source, destination):
+        start_time = timeit.default_timer()
         queue = deque()
         visited = {source: 1}
         parent = {}
@@ -64,7 +68,8 @@ class Graph:
                 while node:
                     path.append(node)
                     node = parent.get(node, None)
-                return len(path)
+                end_time = timeit.default_timer()
+                return path, end_time - start_time
             for neighbors in graph[last]:
                 if neighbors[0] not in visited:
                     visited[neighbors[0]] = 1
@@ -73,6 +78,7 @@ class Graph:
         return "path not found"
 
     def deepth_first_search(self, graph, source, destination):
+        start_time = timeit.default_timer()
         stack = []
         visited = {source: 1}
         path = []
@@ -81,7 +87,8 @@ class Graph:
             last = stack.pop()
             path.append(last)
             if last == destination:
-                return len(path)
+                end_time = timeit.default_timer()
+                return path, end_time - start_time
             else:
                 for neighbor in graph[last]:
                     if neighbor[0] not in visited:
@@ -90,6 +97,7 @@ class Graph:
         return "not found"
 
     def dijkstras(self, graph, source, destination):
+        start_time = timeit.default_timer()
         nodes_distance = defaultdict(lambda: float('inf'))
         visited = {}
         nodes_distance[source] = 0
@@ -104,7 +112,8 @@ class Graph:
                 while node:
                     path.append(node)
                     node = parent.get(node, None)
-                return path
+                end_time = timeit.default_timer()
+                return path, end_time - start_time
             for neighbor in graph[current_node]:
                 if neighbor[0] not in visited:
                     prev_distance = nodes_distance[neighbor[0]]
@@ -127,10 +136,11 @@ class Graph:
         return km
 
     def astar_search(self, graph, h_nodes, source, destination):
+        start_time = timeit.default_timer()
         h_fn = {}
         for key in h_nodes:
             h_fn[key] = self.calculate_distance(h_nodes[key][0], h_nodes[key][1], h_nodes[destination][0],
-                                       h_nodes[destination][1])
+                                                h_nodes[destination][1])
 
         visited_uninspected = {source: 1}
         visited_inspected = {}
@@ -150,7 +160,8 @@ class Graph:
                     paths.append(node)
                     node = parents[node]
                 paths.append(source)
-                return paths
+                end_time = timeit.default_timer()
+                return paths, end_time - start_time
 
             for (node_connected, weight) in graph[node]:
                 if node_connected not in visited_uninspected and node_connected not in visited_inspected:
@@ -170,60 +181,216 @@ class Graph:
         return 'Path does not exist!'
 
 
-def create_graph(file, heuristic):
-    global second_dj, first_dj, second_dfs, first_dfs, second_bfs, first_bfs, second_as, first_as
+def create_graph(file, heuristic,random_1x,random_2x,random_3x,random_4x):
     graph = Graph()
-    adj_list = {}
-    h_nodes = {}
+    graph_1x = Graph()
+    def original_graph():
+        adj_list = {}
+        h_nodes = {}
+        with open(file, "r") as ef:
+            for edges in ef:
+                edges_content = re.split('[:\n]', edges)
+                graph.add_edge(Node(edges_content[0]), Node(edges_content[1]), edges_content[2])
+        with open(heuristic, "r") as hf:
+            for nodes in hf:
+                node_content = re.split('[:\n]', nodes)
+                h_nodes[Node(node_content[0]).name] = (float(node_content[1]), float(node_content[2]))
+        for iv, (k, edge) in enumerate(graph.edges.items()):
+            if k[0] not in adj_list:
+                adj_list[k[0]] = [(k[1], int(edge.weight))]
+            else:
+                adj_list[k[0]].append((k[1], int(edge.weight)))
+        return adj_list,h_nodes
 
-    with open(file, "r") as ef:
-        for edges in ef:
-            edges_content = re.split('[:\n]', edges)
-            graph.add_edge(Node(edges_content[0]), Node(edges_content[1]), edges_content[2])
-    with open(heuristic, "r") as hf:
-        for nodes in hf:
-            node_content = re.split('[:\n]', nodes)
-            h_nodes[Node(node_content[0]).name] = (float(node_content[1]), float(node_content[2]))
-    for iv, (k, edge) in enumerate(graph.edges.items()):
-        if k[0] not in adj_list:
-            adj_list[k[0]] = [(k[1], int(edge.weight))]
-        else:
-            adj_list[k[0]].append((k[1], int(edge.weight)))
+    def generate_1x_graph():
 
-    dist_taken = []
-    bfs = 0
-    for key in graph.vertices.keys():
-        for k in graph.vertices.keys():
-            if k != key:
-                bfs += graph.breadth_first_search(adj_list, k, key)
-    dist_taken.append(bfs / 380)
-    dfs = 0
-    for key in graph.vertices.keys():
-        for k in graph.vertices.keys():
-            if k != key:
-                dfs += graph.deepth_first_search(adj_list, k, key)
-    dist_taken.append(dfs / 380)
+        adj_list_1x = {}
+        h_nodes ={}
+        orginal_citis = []
+        with open(random_1x, "r") as rnd_1x:
+            cities = list(map(str, rnd_1x.read().split()))
+        with open(random_1x, "r") as hf:
+            for city in hf:
+                latitude = random.uniform(40,60)
+                longtude = random.uniform(40,60)
+                node_content = re.split('[\n]', city)
+                h_nodes[Node(node_content[0]).name] = (latitude, longtude)
+        for key in original_graph()[0]:
+            orginal_citis.append(key)
+        num_connection = random.randint(1, 8)
+        for city1 in cities:
+            for i in range(num_connection):
+                weight = random.randint(70, 250)
+                city2 = random.choice(orginal_citis)
+                graph_1x.add_edge(Node(city1), Node(city2), weight)
+        for iv, (k, edge) in enumerate(graph_1x.edges.items()):
+            if k[0] not in adj_list_1x:
+                adj_list_1x[k[0]] = [(k[1], int(edge.weight))]
+            else:
+                adj_list_1x[k[0]].append((k[1], int(edge.weight)))
+        heuristic_nodes = original_graph()[1]
+        for h_node in h_nodes:
+            heuristic_nodes[h_node] = h_nodes[h_node]
+        return adj_list_1x,heuristic_nodes
+    def generate_2x_graph():
 
-    dj = 0
-    for key in graph.vertices.keys():
-        for k in graph.vertices.keys():
-            if k != key:
-                dj += graph.dijkstras(adj_list, k, key)
+        adj_list_2x = {}
+        h_nodes ={}
+        orginal_citis = []
+        with open(random_2x, "r") as rnd_1x:
+            cities = list(map(str, rnd_1x.read().split()))
+        with open(random_2x, "r") as hf:
+            for city in hf:
+                latitude = random.uniform(50,80)
+                longtude = random.uniform(70,80)
+                node_content = re.split('[\n]', city)
+                h_nodes[Node(node_content[0]).name] = (latitude, longtude)
+        for key in original_graph()[0]:
+            orginal_citis.append(key)
+        num_connection = random.randint(1, 8)
+        for city1 in cities:
+            for i in range(num_connection):
+                weight = random.randint(70, 250)
+                city2 = random.choice(orginal_citis)
+                graph_1x.add_edge(Node(city1), Node(city2), weight)
+        for iv, (k, edge) in enumerate(graph_1x.edges.items()):
+            if k[0] not in adj_list_2x:
+                adj_list_2x[k[0]] = [(k[1], int(edge.weight))]
+            else:
+                adj_list_2x[k[0]].append((k[1], int(edge.weight)))
+        heuristic_nodes = generate_1x_graph()[1]
+        for h_node in h_nodes:
+            heuristic_nodes[h_node] = h_nodes[h_node]
+        return adj_list_2x,heuristic_nodes
+    def generate_3x_graph():
 
-    dist_taken.append(dj / 380)
+        adj_list_3x = {}
+        h_nodes ={}
+        orginal_citis = []
+        with open(random_3x, "r") as rnd_1x:
+            cities = list(map(str, rnd_1x.read().split()))
+        with open(random_3x, "r") as hf:
+            for city in hf:
+                latitude = random.uniform(70,100)
+                longtude = random.uniform(70,80)
+                node_content = re.split('[\n]', city)
+                h_nodes[Node(node_content[0]).name] = (latitude, longtude)
+        for key in original_graph()[0]:
+            orginal_citis.append(key)
+        num_connection = random.randint(1, 8)
+        for city1 in cities:
+            for i in range(num_connection):
+                weight = random.randint(70, 250)
+                city2 = random.choice(orginal_citis)
+                graph_1x.add_edge(Node(city1), Node(city2), weight)
+        for iv, (k, edge) in enumerate(graph_1x.edges.items()):
+            if k[0] not in adj_list_3x:
+                adj_list_3x[k[0]] = [(k[1], int(edge.weight))]
+            else:
+                adj_list_3x[k[0]].append((k[1], int(edge.weight)))
+        heuristic_nodes = generate_2x_graph()[1]
+        for h_node in h_nodes:
+            heuristic_nodes[h_node] = h_nodes[h_node]
+        return adj_list_3x,heuristic_nodes
+    def generate_4x_graph():
 
-    astar = 0
-    for key in graph.vertices.keys():
-        for k in graph.vertices.keys():
-            if k != key:
-                astar += graph.astar_search(adj_list, h_nodes, k, key)
-    dist_taken.append(astar / 380)
-    search_algorithms = ["bfs", "dfs", "dijkstras", "astar"]
-    plt.bar(search_algorithms, dist_taken)
-    plt.suptitle('Graph search algorithms')
-    plt.xlabel("search algorithms")
-    plt.ylabel("Average time taken")
+        adj_list_4x = {}
+        h_nodes ={}
+        orginal_citis = []
+        with open(random_4x, "r") as rnd_1x:
+            cities = list(map(str, rnd_1x.read().split()))
+        with open(random_4x, "r") as hf:
+            for city in hf:
+                latitude = random.uniform(70,100)
+                longtude = random.uniform(30,40)
+                node_content = re.split('[\n]', city)
+                h_nodes[Node(node_content[0]).name] = (latitude, longtude)
+        for key in original_graph()[0]:
+            orginal_citis.append(key)
+        num_connection = random.randint(1, 8)
+        for city1 in cities:
+            for i in range(num_connection):
+                weight = random.randint(70, 250)
+                city2 = random.choice(orginal_citis)
+                graph_1x.add_edge(Node(city1), Node(city2), weight)
+        for iv, (k, edge) in enumerate(graph_1x.edges.items()):
+            if k[0] not in adj_list_4x:
+                adj_list_4x[k[0]] = [(k[1], int(edge.weight))]
+            else:
+                adj_list_4x[k[0]].append((k[1], int(edge.weight)))
+        heuristic_nodes = generate_3x_graph()[1]
+        for h_node in h_nodes:
+            heuristic_nodes[h_node] = h_nodes[h_node]
+        return adj_list_4x,heuristic_nodes
+    def calculate_time(adj_list, function):
+        if function == "bfs":
+            total_time = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_time += graph.breadth_first_search(adj_list, k, key)[1]
+            return total_time / 380
+        if function == "dfs":
+            total_time = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_time += graph.deepth_first_search(adj_list, k, key)[1]
+            return total_time / 380
+        if function == "dijkstras":
+            total_time = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_time += graph.dijkstras(adj_list, k, key)[1]
+            return total_time / 380
+        if function == "astar":
+            total_time = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_time += graph.astar_search(adj_list, generate_4x_graph()[1], k, key)[1]
+            return total_time / 380
+
+    def calculate_length(adj_list, function):
+        if function == "bfs":
+            total_length = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_length += len(graph.breadth_first_search(adj_list, k, key)[0])
+            return total_length / 380
+        if function == "dfs":
+            total_length = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_length += len(graph.deepth_first_search(adj_list, k, key)[0])
+            return total_length / 380
+        if function == "dijkstras":
+            total_length = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_length += len(graph.dijkstras(adj_list, k, key)[0])
+            return total_length / 380
+        if function == "astar":
+            total_length = 0
+            for key in graph.vertices.keys():
+                for k in graph.vertices.keys():
+                    if k != key:
+                        total_length += len(graph.astar_search(adj_list, generate_4x_graph()[1], k, key)[0])
+            return total_length / 380
+    average_time = [calculate_time(generate_4x_graph()[0], "bfs"), calculate_time(generate_4x_graph()[0], "dfs"),
+                    calculate_time(generate_4x_graph()[0], "dijkstras"), calculate_time(generate_4x_graph()[0], "astar")]
+    average_length = [calculate_length(generate_4x_graph()[0], "bfs"), calculate_length(generate_4x_graph()[0], "dfs"),
+                      calculate_length(generate_4x_graph()[0], "dijkstras"), calculate_length(generate_4x_graph()[0], "astar")]
+    algorithm = ["bfs", "dfs", "dijkstras", "A*"]
+    plt.plot(algorithm, average_length)
+    plt.xlabel("Search algorithm")
+    plt.ylabel("Average Length Taken")
+    plt.legend()
     plt.show()
 
 
-create_graph("edges.text", "heuristic.text")
+create_graph("edges.text", "heuristic.text","random_1x.text","random_2x.text","random_3x.text","random_4x.text")

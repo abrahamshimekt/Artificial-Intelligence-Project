@@ -51,7 +51,7 @@ class Graph:
         left.connect(right)
         right.connect(left)
 
-    def dijkstras(self, graph,function, source, destination):
+    def dijkstras(self, graph, function, source, destination):
         nodes_distance = defaultdict(lambda: float('inf'))
         visited = {}
         nodes_distance[source] = 0
@@ -61,13 +61,13 @@ class Graph:
         while len(heap) != 0:
             (shortest_distance, current_node) = heapq.heappop(heap)
             if current_node == destination:
-                if function =="closenness":
+                if function == "closenness":
                     return shortest_distance
-                elif function =="betweenness":
+                elif function == "betweenness":
                     path = []
                     while current_node:
                         path.append(current_node)
-                        current_node = parent.get(current_node,None)
+                        current_node = parent.get(current_node, None)
                     return path
             for neighbor in graph[current_node]:
                 if neighbor[0] not in visited:
@@ -78,6 +78,7 @@ class Graph:
                         nodes_distance[neighbor[0]] = curr_distance
                         parent[neighbor[0]] = current_node
         return "not found"
+
     def calculate_distance(self, source_lat, source_lon, destination_lat, destination_lon):
         source_lon, source_lat, destination_lon, destination_lat = map(radians,
                                                                        [source_lon, source_lat, destination_lon,
@@ -89,7 +90,7 @@ class Graph:
         km = 6371 * c
         return km
 
-    def astar_search(self, graph, h_nodes,function, source, destination):
+    def astar_search(self, graph, h_nodes, function, source, destination):
         h_fn = {}
         for key in h_nodes:
             h_fn[key] = self.calculate_distance(h_nodes[key][0], h_nodes[key][1], h_nodes[destination][0],
@@ -107,9 +108,9 @@ class Graph:
             if node is None:
                 return 'Path does not exist!'
             if node == destination:
-                if function =="closenness":
+                if function == "closenness":
                     return distance[node]
-                elif function =="betweenness":
+                elif function == "betweenness":
                     paths = []
                     while parents[node] != node:
                         paths.append(node)
@@ -134,7 +135,6 @@ class Graph:
         return 'Path does not exist!'
 
 
-
 def create_graph(file, heuristic):
     graph = Graph()
     adj_list = {}
@@ -155,53 +155,62 @@ def create_graph(file, heuristic):
             adj_list[k[0]].append((k[1], int(edge.weight)))
     """This function calculate degree of centrality using a formula:
      No. adjacent edge/No. node -1"""
-    def calculate_degree(adj_list,solution_node):
+
+    def calculate_degree(adj_list, solution_node):
         degree_nodes = {}
         for node in adj_list:
             degree_nodes[node] = len(adj_list[node]) / (len(adj_list) - 1)
         return degree_nodes[solution_node]
+
     """This function calculates the closeness centrality using a formula:
      No. node -1/the total shortest distances to the solution node """
-    def calculate_closenness_dijkstras(closenness,adj_list,solution_node):
+
+    def calculate_closenness_dijkstras(closenness, adj_list, solution_node):
         total_shortest_distance = 0
         for node in adj_list:
-            total_shortest_distance += graph.dijkstras(adj_list,closenness,node,solution_node)
-        return (len(adj_list)-1)/total_shortest_distance
+            total_shortest_distance += graph.dijkstras(adj_list, closenness, node, solution_node)
+        return (len(adj_list) - 1) / total_shortest_distance
+
     """This function calculates the betweenness centrality by using a formula:
     No.shortest paths that pass through the solution node/Total number shortest pass from any node"""
-    def calculate_betweenness_dijkstras(betweenness,adj_list,solution_node):
-        shortest_paths =[]
+
+    def calculate_betweenness_dijkstras(betweenness, adj_list, solution_node):
+        shortest_paths = []
         for node in adj_list:
             for n in adj_list:
                 if n != node:
-                    shortest_paths.append(graph.dijkstras(adj_list,betweenness,n,node))
+                    shortest_paths.append(graph.dijkstras(adj_list, betweenness, n, node))
         paths_through = 0
         for element in shortest_paths:
             for i in range(len(element)):
-                if element[i] ==solution_node and i !=0 and i != len(element)-1:
-                    paths_through +=1
-        return paths_through/len(shortest_paths)
-    def calculate_closenness_astar(adj_list,heuristic_nodes,closenness,solution_node):
+                if element[i] == solution_node and i != 0 and i != len(element) - 1:
+                    paths_through += 1
+        return paths_through / len(shortest_paths)
+
+    def calculate_closenness_astar(adj_list, heuristic_nodes, closenness, solution_node):
         total_shortest_distance = 0
         for node in adj_list:
-            total_shortest_distance += graph.astar_search(adj_list,heuristic_nodes,closenness,node,solution_node)
-        return (len(adj_list)-1)/total_shortest_distance
-    def calculate_betweenness_astar(adj_list,heuristic_nodes,betweenness,solution_node):
-        shortest_paths =[]
+            total_shortest_distance += graph.astar_search(adj_list, heuristic_nodes, closenness, node, solution_node)
+        return (len(adj_list) - 1) / total_shortest_distance
+
+    def calculate_betweenness_astar(adj_list, heuristic_nodes, betweenness, solution_node):
+        shortest_paths = []
         for node in adj_list:
             for n in adj_list:
                 if n != node:
-                    shortest_paths.append(graph.astar_search(adj_list,heuristic_nodes,betweenness,n,node))
+                    shortest_paths.append(graph.astar_search(adj_list, heuristic_nodes, betweenness, n, node))
         paths_through = 0
         for element in shortest_paths:
             for i in range(len(element)):
-                if element[i] ==solution_node and i !=0 and i != len(element)-1:
-                    paths_through +=1
-        return paths_through/len(shortest_paths)
-    print("degree:",calculate_degree(adj_list,"Bucharest"))
-    print("closenness_dijkstra:",calculate_closenness_dijkstras("closenness",adj_list,"Bucharest"))
-    print("betweenness_dijkstra:",calculate_betweenness_dijkstras("betweenness",adj_list,"Bucharest"))
-    print("closenness_astar:",calculate_closenness_astar( adj_list,heuristic_nodes,"closenness", "Bucharest"))
-    print("betweenness_astar:",calculate_betweenness_astar( adj_list,heuristic_nodes,"betweenness","Bucharest"))
+                if element[i] == solution_node and i != 0 and i != len(element) - 1:
+                    paths_through += 1
+        return paths_through / len(shortest_paths)
+
+    print("degree:", calculate_degree(adj_list, "Bucharest"))
+    print("closenness_dijkstra:", calculate_closenness_dijkstras("closenness", adj_list, "Bucharest"))
+    print("betweenness_dijkstra:", calculate_betweenness_dijkstras("betweenness", adj_list, "Bucharest"))
+    print("closenness_astar:", calculate_closenness_astar(adj_list, heuristic_nodes, "closenness", "Bucharest"))
+    print("betweenness_astar:", calculate_betweenness_astar(adj_list, heuristic_nodes, "betweenness", "Bucharest"))
+
 
 create_graph("edges.text", "heuristic.text")
